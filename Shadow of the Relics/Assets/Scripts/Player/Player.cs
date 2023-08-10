@@ -11,14 +11,19 @@ public class Player : MonoBehaviour
     public Animator Anim;
 
     public float detectCooldown, stopDetectTime, latePositionTime, damageCooldown;
+    public AudioPlayer RangeHitAudio;
 
     public Vector2 position{get=>transform.position;}
     public float activeDir{get=>(sprite.flipX?-1f:1f); set=>sprite.flipX = (value < 0f);}
     [HideInInspector] public Vector2 latePosition, lastSeenPosition;
     public bool CantGetDamaged{get=>damaged > 0f;}
 
+    public static Player activePlayer;
+
     void Awake()
     {
+        activePlayer = this;
+
         movement.player = this;
         animator.player = this;
         health.player = this;
@@ -39,10 +44,12 @@ public class Player : MonoBehaviour
             damaged -= Time.fixedDeltaTime;
     }
 
-    public void TakeDamage(float damage, Vector2 origin)
+    public void TakeDamage(float damage, Vector2 origin, bool range = false)
     {
         if(CantGetDamaged)
             return;
+        if(range)
+            RangeHitAudio.Play();
         
         damaged = damageCooldown;
         movement.TakeDamage(damage, origin);
@@ -53,12 +60,14 @@ public class Player : MonoBehaviour
     void OnLoad()
     {
         transform.position = SaveManager.saver.playerSave.position;
+        movement.rb.velocity = SaveManager.saver.playerSave.velocity;
         health.SetHealth(SaveManager.saver.playerSave.health);
     }
 
     void OnSave()
     {
         SaveManager.saver.playerSave.position = transform.position;
+        SaveManager.saver.playerSave.velocity = movement.rb.velocity;
         SaveManager.saver.playerSave.health = health.GetHealth();
     }
 
@@ -97,6 +106,6 @@ public abstract class PlayerBehaviour : MonoBehaviour
 
 public struct PlayerSave
 {
-    public Vector2 position;
+    public Vector2 position, velocity;
     public float health;
 }

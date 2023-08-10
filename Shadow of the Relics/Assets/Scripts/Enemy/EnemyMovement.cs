@@ -4,10 +4,24 @@ using UnityEngine;
 
 public class EnemyMovement : EnemyBehaviour
 {
-    public float chaseSpeed, nonAggroSpeed, jumpGravity, fallGravity, jumpDistance, minJumpHeight, jumpOvershootHeight, attackRadius, aggroWanderDist;
+    public float chaseSpeed, randomSpeedRange, nonAggroSpeed, jumpGravity, fallGravity, jumpDistance, minJumpHeight, jumpOvershootHeight, attackRadius, aggroWanderDist;
     public AudioPlayer RunAudio;
 
     float direction{get=>transform.localScale.x; set=>transform.localScale = new Vector3(value, transform.localScale.y, transform.localScale.z);}
+    float currentChaseSpeed;
+
+    public void OnLoad(EnemySave save)
+    {
+        jumpTime = save.jumpTime;
+        jumpVelocity = save.jumpVelocity;
+    }
+
+    public EnemySave OnSave(EnemySave save)
+    {
+        save.jumpTime = jumpTime;
+        save.jumpVelocity = jumpVelocity;
+        return save;
+    }
 
     void Update()
     {
@@ -26,6 +40,9 @@ public class EnemyMovement : EnemyBehaviour
 
     public void StartChase()
     {
+        currentChaseSpeed = Random.Range(chaseSpeed - randomSpeedRange, chaseSpeed + randomSpeedRange);
+        if(jumpTime > 0f)
+            return;
         if(currentPath == null)
             currentPath = PathManager.ClosestPathTo(transform.position);
         targetPath = null;
@@ -70,6 +87,7 @@ public class EnemyMovement : EnemyBehaviour
         }
 
         targetPos = JumpPosition(currentLink.selfType, currentLink.linkedType, currentLink.linkedPath, currentPath);
+        currentChaseSpeed = Random.Range(chaseSpeed - randomSpeedRange, chaseSpeed + randomSpeedRange);
     }
 
     void Pathfind()
@@ -97,7 +115,7 @@ public class EnemyMovement : EnemyBehaviour
         }
 
         direction = Mathf.Sign(targetPos.x - transform.position.x);
-        transform.position = Vector2.MoveTowards(transform.position, targetPos, (enemy.aggro?chaseSpeed:nonAggroSpeed) * Time.deltaTime);
+        transform.position = Vector2.MoveTowards(transform.position, targetPos, (enemy.aggro?currentChaseSpeed:nonAggroSpeed) * Time.deltaTime);
         enemy.animator.Play(enemy.animator.runAnim);
         RunAudio.Play();
     }
@@ -153,6 +171,13 @@ public class EnemyMovement : EnemyBehaviour
 
         jumpTime -= Time.deltaTime;
         if(jumpTime <= 0f)
+        {
+            if(currentPath == null)
+            {
+                currentPath = PathManager.ClosestPathTo(transform.position);
+                FindNewPath();
+            }
             transform.position = PointOnPath(transform.position, currentPath);
+        }
     }
 }
